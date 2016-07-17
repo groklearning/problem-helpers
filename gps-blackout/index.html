@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <title>GPS Blackout Simulator</title>
+    <title>GPS Blackout Visualiser</title>
 
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -24,11 +24,11 @@
     <nav class="navbar navbar-inverse navbar-fixed-top">
       <div class="container">
         <div class="navbar-header">
-          <a class="navbar-brand" href="#">GPS Blackout Simulator</a>
+          <a class="navbar-brand" href="http://groklearning.com/" target="_blank">Grok Learning</a>
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
-            <li class="active"><a href="https://groklearning.com/">Grok Learning</a></li>
+            <li class="active"><a href="#">GPS Blackout</a></li>
           </ul>
         </div>
       </div>
@@ -42,6 +42,38 @@
               <h3 class="panel-title">Input</h3>
             </div>
             <div class="panel-body">
+              <p>
+                The visualiser expects a log file (e.g. <code>log.txt</code> which contains logging information from your program at each time-step of the simulation.
+                The format of this file is as follows:
+              </p>
+              <ul>
+                <li>Each time-step must be separated by a blank line.</li>
+                <li>Within each time-step, you can output multiple lines.</li>
+                <li>Each line dictates one shape to draw.</li>
+                <li>There are three possible line values:
+                  <ul>
+                    <li><code>satellite &lt;x> &lt;y></code></li>
+                    <li><code>city &lt;label> &lt;x> &lt;y></code></li>
+                    <li><code>line &lt;colour> &lt;x1> &lt;y1> &lt;x2> &lt;y2></code>, where <code>&lt;colour></code> is one of <code>blue</code>, <code>green</code>, <code>red</code>, or <code>yellow</code></li>
+                  </ul>
+                </li>
+              </ul>
+              <p>
+                Given the first example input in the question, the <code>log.txt</code> for the first time-step produced by the sample solution is shown below.
+                The below example won't produce an animation when visualised as there's only one time-step.
+              </p>
+              <pre><code>satellite -26534981.9866 -232437.02759
+line green -26534981.9866 -232437.02759 -1574946.82998 6154685.32768
+line green -26534981.9866 -232437.02759 -1466887.70623 -6181330.71897
+satellite 11066018.3495 2952024.20187
+line green 11066018.3495 2952024.20187 4767423.64792 -4199080.94245
+line green 11066018.3495 2952024.20187 2042473.78607 6015721.88796
+city City1 -6042062.04802 1963184.96526
+line yellow -6042062.04802 1963184.96526 -26534981.9866 -232437.02759
+city City2 3734199.70781 5139684.96526
+line yellow 3734199.70781 5139684.96526 11066018.3495 2952024.20187
+
+</code></pre>
               <form id="form">
                 <div class="form-group">
                   <label for="log-file">Upload log.txt</label>
@@ -52,7 +84,7 @@
                   <textarea class="form-control" rows="10" id="log" placeholder="satellite -26534981.9866 -232437.02759"></textarea>
                 </div>
                 <div class="alert alert-danger" role="alert" id="alert" style="display: none"></div>
-                <button type="submit" class="btn btn-default btn-primary" id="render-button">Render</button>
+                <button type="submit" class="btn btn-default btn-primary" id="visualise-button">Visualise</button>
                 <button type="button" class="btn btn-default btn-danger" id="stop-button" style="display: none">Stop</button>
               </form>
             </div>
@@ -61,10 +93,10 @@
       </div><!-- /row -->
 
       <div class="row">
-        <section id="render-container" class="col-xs-12">
+        <section id="visualise-container" class="col-xs-12">
           <div class="panel panel-default">
             <div class="panel-heading">
-              <h3 class="panel-title">Rendering</h3>
+              <h3 class="panel-title">Visualisation</h3>
             </div>
             <div class="panel-body text-center">
               <canvas id="canvas"></canvas>
@@ -81,13 +113,15 @@
 
     <script type="text/javascript">
       (function() {
+        'use strict';
+
         var elAlert = document.getElementById('alert');
         var elCanvas = document.getElementById('canvas');
         var elForm = document.getElementById('form');
         var elLog = document.getElementById('log');
         var elLogFile = document.getElementById('log-file');
-        var elRender = document.getElementById('render-button');
         var elStop = document.getElementById('stop-button');
+        var elVisualise = document.getElementById('visualise-button');
 
         var COLOURS = {
           'black': 'rgb(0, 0, 0)',
@@ -166,6 +200,9 @@
               throw Error('Unexpected type ' + cols[0]);
             }
           });
+          if (tick.length !== 0) {
+            ticks.push(tick);
+          }
 
           if (ticks.length === 0) {
             throw Error('No content found.');
@@ -237,7 +274,7 @@
           if (stopAnimation) {
             elLog.disabled = false;
             elLogFile.disabled = false;
-            elRender.disabled = false;
+            elVisualise.disabled = false;
           }
           else {
             window.requestAnimationFrame(draw.bind(this, ticks, (tick + 1) % ticks.length));
@@ -247,7 +284,7 @@
 
         var startDrawing = function(ticks, width, height) {
           // Work out scaling factor.
-          SCALE = Math.min(SIZE / width, SIZE / height)
+          SCALE = Math.min(SIZE / width, SIZE / height);
           OFF_X = SIZE / 2.0;
           OFF_Y = SIZE / 2.0;
 
@@ -263,8 +300,9 @@
           elLog.focus();
 
           // Parse the log file.
+          var p;
           try {
-            var p = processLog(elLog.value);
+            p = processLog(elLog.value);
           }
           catch (e) {
             elAlert.innerText = e.toString();
@@ -275,7 +313,7 @@
           // Change the UI to the running state.
           elLog.disabled = true;
           elLogFile.disabled = true;
-          elRender.disabled = true;
+          elVisualise.disabled = true;
           elStop.style.display = 'inline-block';
 
           // Start the drawing process.
@@ -292,8 +330,9 @@
             return;
           }
 
-          // Hide the alert.
+          // Update the UI state.
           elAlert.style.display = 'none';
+          elVisualise.disabled = true;
 
           // Read the file and insert its content into the textarea.
           var reader = new FileReader();
@@ -301,6 +340,7 @@
             if (event.target.readyState === FileReader.DONE) {
               elForm.reset();
               elLog.value = event.target.result;
+              elVisualise.disabled = false;
             }
           };
           reader.readAsText(files[0], 'utf-8');
@@ -324,6 +364,11 @@
           var ctx = elCanvas.getContext('2d');
           ctx.canvas.height = SIZE;
           ctx.canvas.width = SIZE;
+
+          // Clear the screen.
+          ctx.clearRect(0, 0, SIZE, SIZE);
+          ctx.fillStyle = COLOURS['black'];
+          ctx.fillRect(0, 0, SIZE, SIZE);
 
           // Bind events.
           elForm.addEventListener('submit', onFormSubmit, false);
