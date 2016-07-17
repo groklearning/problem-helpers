@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>GPS Blackout Simulator</title>
+
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+    <style>
+      #container {
+        margin-top: 60px;
+      }
+      textarea {
+        font-family: monospace;
+      }
+      #canvas {
+        width: 80%;
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <a class="navbar-brand" href="#">GPS Blackout Simulator</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li class="active"><a href="https://groklearning.com/">Grok Learning</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container" id="container">
+      <div class="row">
+        <section id="input-container" class="col-xs-12">
+          <div class="panel panel-default">
+            <div class="panel-heading">
+              <h3 class="panel-title">Input</h3>
+            </div>
+            <div class="panel-body">
+              <form id="form">
+                <div class="form-group">
+                  <label for="log-file">Upload log.txt</label>
+                  <input type="file" id="log-file" accept=".txt">
+                </div>
+                <div class="form-group">
+                  <label for="log">Or enter log.txt contents manually</label>
+                  <textarea class="form-control" rows="10" id="log" placeholder="satellite -26534981.9866 -232437.02759"></textarea>
+                </div>
+                <div class="alert alert-danger" role="alert" id="alert" style="display: none"></div>
+                <button type="submit" class="btn btn-default btn-primary" id="render-button">Render</button>
+                <button type="button" class="btn btn-default btn-danger" id="stop-button" style="display: none">Stop</button>
+              </form>
+            </div>
+          </div>
+        </section>
+      </div><!-- /row -->
+
+      <div class="row">
+        <section id="render-container" class="col-xs-12">
+          <div class="panel panel-default">
+            <div class="panel-heading">
+              <h3 class="panel-title">Rendering</h3>
+            </div>
+            <div class="panel-body text-center">
+              <canvas id="canvas"></canvas>
+            </div>
+          </div>
+        </section>
+      </div><!-- /row -->
+
+      <hr>
+      <footer>
+        <p>&copy; 2016 <a href="https://groklearning.com/">Grok Learning</a> Pty Ltd.</p>
+      </footer>
+    </div><!-- /container -->
+
+    <script type="text/javascript">
+      (function() {
+        var elAlert = document.getElementById('alert');
+        var elCanvas = document.getElementById('canvas');
+        var elForm = document.getElementById('form');
+        var elLog = document.getElementById('log');
+        var elLogFile = document.getElementById('log-file');
+        var elRender = document.getElementById('render-button');
+        var elStop = document.getElementById('stop-button');
+
+        var COLOURS = {
+          'black': 'rgb(0, 0, 0)',
+          'blue': 'rgb(0, 0, 200)',
+          'green': 'rgb(0, 200, 0)',
+          'red': 'rgb(255, 0, 0)',
+          'white': 'rgb(255, 255, 255)',
+          'yellow': 'rgb(200, 200, 50)',
+        };
+
+        var T_CITY = 1, T_LINE = 2, T_SATELLITE = 3;
+        var R_EARTH = 6353000.0;
+        var SIZE = null, SCALE = null, OFF_X = null, OFF_Y = null;
+        var stopAnimation = false;
+
+
+        var compareNumbers = function(a, b) {
+          return a - b;
+        };
+
+
+        var processLog = function(log) {
+          var ticks = [], tick = [], xs = [], ys = [];
+          log.trim().split(/\r?\n/).forEach(function(line) {
+            line = line.trim();
+
+            // Blank line ends a frame.
+            if (!line) {
+              if (tick.length !== 0) {
+                ticks.push(tick);
+                tick = [];
+              }
+              return;
+            }
+
+            var x1, x2, y1, y2, colour;
+            var cols = line.split(/\s+/);
+            switch (cols[0]) {
+            case 'satellite':
+              if (cols.length !== 3) {
+                throw Error('satellite row has ' + cols.length + ' columns instead of the expected 3');
+              }
+              x1 = parseFloat(cols[1]);
+              y1 = parseFloat(cols[2]);
+              tick.push([T_SATELLITE, x1, y1]);
+              xs.push(x1);
+              ys.push(y1);
+              break;
+            case 'city':
+              if (cols.length !== 4) {
+                throw Error('city row has ' + cols.length + ' columns instead of the expected 4');
+              }
+              x1 = parseFloat(cols[2]);
+              y1 = parseFloat(cols[3]);
+              xs.push(x1);
+              ys.push(y1);
+              tick.push([T_CITY, cols[1], x1, y1]);
+              break;
+            case 'line':
+              if (cols.length !== 6) {
+                throw Error('line row has ' + cols.length + ' columns instead of the expected 6');
+              }
+              colour = cols[1].toLowerCase();
+              if (COLOURS[colour] === undefined) {
+                throw Error('Unknown colour ' + colour);
+              }
+              x1 = parseFloat(cols[2]);
+              y1 = parseFloat(cols[3]);
+              x2 = parseFloat(cols[4]);
+              y2 = parseFloat(cols[5]);
+              tick.push([T_LINE, COLOURS[colour], x1, y1, x2, y2]);
+              xs.push(x1, x2);
+              ys.push(y1, y2);
+              break;
+            default:
+              throw Error('Unexpected type ' + cols[0]);
+            }
+          });
+
+          if (ticks.length === 0) {
+            throw Error('No content found.');
+          }
+
+          // Compute the width and height of the point set.
+          xs.sort(compareNumbers);
+          var width = Math.max(Math.abs(xs[xs.length - 1]), Math.abs(xs[0])) * 2;
+          ys.sort(compareNumbers);
+          var height = Math.max(Math.abs(ys[ys.length - 1]), Math.abs(ys[0])) * 2;
+
+          return {'ticks': ticks, 'width': width, 'height': height};
+        };
+
+
+        var draw = function(ticks, tick) {
+          var ctx = elCanvas.getContext('2d');
+
+          // Clear the screen.
+          ctx.clearRect(0, 0, SIZE, SIZE);
+          ctx.fillStyle = COLOURS['black'];
+          ctx.fillRect(0, 0, SIZE, SIZE);
+
+          // Draw the Earth.
+          ctx.fillStyle = COLOURS['white'];
+          ctx.beginPath();
+          ctx.arc(OFF_X, OFF_Y, R_EARTH*SCALE, 0, 2*Math.PI, true);
+          ctx.closePath();
+          ctx.fill();
+
+          // Draw the shapes.
+          ticks[tick].forEach(function(shape) {
+            var x1, x2, y1, y2;
+            switch (shape[0]) {
+            case T_SATELLITE:
+              x1 = shape[1]*SCALE + OFF_X;
+              y1 = shape[2]*SCALE + OFF_Y;
+              ctx.beginPath();
+              ctx.fillStyle = COLOURS['green'];
+              ctx.arc(x1, y1, 3, 0, 2*Math.PI, true);
+              ctx.closePath();
+              ctx.fill();
+              break;
+            case T_CITY:
+              x1 = shape[2]*SCALE + OFF_X;
+              y1 = shape[3]*SCALE + OFF_Y;
+              ctx.beginPath();
+              ctx.fillStyle = COLOURS['red'];
+              ctx.arc(x1, y1, 3, 0, 2*Math.PI, true);
+              ctx.closePath();
+              ctx.fill();
+              break;
+            case T_LINE:
+              ctx.strokeStyle = shape[1];
+              x1 = shape[2]*SCALE + OFF_X;
+              y1 = shape[3]*SCALE + OFF_Y;
+              x2 = shape[4]*SCALE + OFF_X;
+              y2 = shape[5]*SCALE + OFF_Y;
+              ctx.beginPath();
+              ctx.moveTo(x1, y1);
+              ctx.lineTo(x2, y2);
+              ctx.closePath();
+              ctx.stroke();
+              break;
+            }
+          });
+
+          // Draw the next frame.
+          if (stopAnimation) {
+            elLog.disabled = false;
+            elLogFile.disabled = false;
+            elRender.disabled = false;
+          }
+          else {
+            window.requestAnimationFrame(draw.bind(this, ticks, (tick + 1) % ticks.length));
+          }
+        };
+
+
+        var startDrawing = function(ticks, width, height) {
+          // Work out scaling factor.
+          SCALE = Math.min(SIZE / width, SIZE / height)
+          OFF_X = SIZE / 2.0;
+          OFF_Y = SIZE / 2.0;
+
+          // Start the drawing process.
+          stopAnimation = false;
+          draw(ticks, 0);
+        };
+
+
+        var onFormSubmit = function(event) {
+          event.preventDefault();
+          elAlert.style.display = 'none';
+          elLog.focus();
+
+          // Parse the log file.
+          try {
+            var p = processLog(elLog.value);
+          }
+          catch (e) {
+            elAlert.innerText = e.toString();
+            elAlert.style.display = 'block';
+            return;
+          }
+
+          // Change the UI to the running state.
+          elLog.disabled = true;
+          elLogFile.disabled = true;
+          elRender.disabled = true;
+          elStop.style.display = 'inline-block';
+
+          // Start the drawing process.
+          setTimeout(startDrawing.bind(this, p['ticks'], p['width'], p['height']), 0);
+          return false;
+        };
+
+
+        var onLogFileChange = function(event) {
+          // Ensure we have a file.
+          var files = elLogFile.files;
+          if (files.length === 0) {
+            elForm.reset();
+            return;
+          }
+
+          // Hide the alert.
+          elAlert.style.display = 'none';
+
+          // Read the file and insert its content into the textarea.
+          var reader = new FileReader();
+          reader.onload = function(event) {
+            if (event.target.readyState === FileReader.DONE) {
+              elForm.reset();
+              elLog.value = event.target.result;
+            }
+          };
+          reader.readAsText(files[0], 'utf-8');
+        };
+
+
+        var onStopClick = function(event) {
+          event.preventDefault();
+          stopAnimation = true;
+          elLog.focus();
+          elStop.style.display = 'none';
+          return false;
+        };
+
+
+        document.addEventListener('DOMContentLoaded', function(event) {
+          // Resise canvas.
+          var width = window.getComputedStyle(elCanvas, null).getPropertyValue('width');
+          elCanvas.style.height = width;
+          SIZE = parseInt(width.replace(/px$/, ''), 10);
+          var ctx = elCanvas.getContext('2d');
+          ctx.canvas.height = SIZE;
+          ctx.canvas.width = SIZE;
+
+          // Bind events.
+          elForm.addEventListener('submit', onFormSubmit, false);
+          elLogFile.addEventListener('change', onLogFileChange, false);
+          elStop.addEventListener('click', onStopClick, false);
+        });
+      })();
+    </script>
+  </body>
+</html>
