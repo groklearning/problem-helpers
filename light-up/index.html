@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Light Up</title>
+    <style>
+:root {
+  --cell-size: 50px;
+}
+@media screen and (max-width: 400px) {
+  :root {
+    --cell-size: 40px;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  font-family: Verdana, Arial, sans-serif;
+}
+
+body {
+  background-color: rgba(200, 200, 200, 0.30);
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+  body.solved {
+    background-color: rgba(110, 255, 0, 0.30);
+  }
+  body.unhappy {
+    background-color: rgba(255, 0, 0, 0.30);
+  }
+
+#light-up-container {
+  display: inline-block;
+  margin: 0 auto;
+  text-align: center;
+}
+  #light-up-container header {
+  }
+    #light-up-container header h1 {
+      margin-bottom: 0.5em;
+    }
+    #light-up-container header .board-state {
+      font-style: italic;
+      font-size: small;
+      margin-bottom: 0.5em;
+    }
+
+  #light-up-container light-up {
+    display: block;
+  }
+    #light-up-container light-up > row {
+      display: flex;
+    }
+    #light-up-container light-up > row:last-child > cell  {
+      border-bottom: 1px solid black;
+    }
+      #light-up-container light-up > row > cell {
+        background-color: white;
+        border: 1px solid black;
+        border-bottom: none;
+        border-right: none;
+        flex: 1;
+        text-align: center;
+        vertical-align: middle;
+        height: var(--cell-size);
+        width: var(--cell-size);
+        font-size: calc(2 * var(--cell-size) / 3);
+        line-height: var(--cell-size);
+      }
+      #light-up-container light-up > row > cell.black {
+        background-color: black;
+        color: white;
+      }
+      #light-up-container light-up > row > cell.alight {
+        background-color: yellow;
+      }
+      #light-up-container light-up > row > cell.unhappy {
+        background-color: red !important;
+      }
+      #light-up-container light-up > row > cell:hover {
+        border-color: blue;
+        cursor: pointer;
+        -webkit-touch-callout: none;
+          -webkit-user-select: none;
+             -moz-user-select: none;
+              -ms-user-select: none;
+                  user-select: none;
+      }
+      #light-up-container light-up > row > cell:last-child {
+        border-right: 1px solid black;
+      }
+
+  #light-up-container form {
+    display: flex;
+    margin-top: 15px;
+    text-align: left;
+  }
+    #light-up-container textarea:focus, #light-up-container input:focus, #light-up-container button:focus {
+      outline: none;
+    }
+    #light-up-container form textarea {
+      border: 1px solid lightblue;
+      border-radius: 10px 0 0 10px;
+      font-family: monospace;
+      font-size: calc(var(--cell-size) / 3);
+      flex: 2;
+      resize: none;
+      padding-left: 10px;
+    }
+    #light-up-container form input[type=submit] {
+      background-color: lightblue;
+      border: none;
+      border-radius: 0 10px 10px 0;
+      font-size: var(--cell-size);
+      line-height: var(--cell-size);
+      flex: 5;
+    }
+      #light-up-container form input[type=submit]:hover {
+        cursor: pointer;
+      }
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head>
+  <body>
+    <article id="light-up-container">
+      <header>
+        <h1>Light Up</h1>
+        <div class="board-state">The board is happy but unsolved.</div>
+      </header>
+      <section>
+        <light-up></light-up>
+      </section>
+      <form id="light-up-form">
+        <textarea rows="10">...1.0.
+X......
+..X.X..
+X.....X
+..X.3..
+......X
+.3.2...</textarea>
+        <input type="submit" value="Load">
+      </form>
+    </article>
+    <script type="text/javascript">
+(function(){'use strict';var f="function"==typeof Object.defineProperties?Object.defineProperty:function(b,c,d){b!=Array.prototype&&b!=Object.prototype&&(b[c]=d.value)},g="undefined"!=typeof window&&window===this?this:"undefined"!=typeof global&&null!=global?global:this;function h(){h=function(){};g.Symbol||(g.Symbol=l)}var m=0;function l(b){return"jscomp_symbol_"+(b||"")+m++}
+function n(){h();var b=g.Symbol.iterator;b||(b=g.Symbol.iterator=g.Symbol("iterator"));"function"!=typeof Array.prototype[b]&&f(Array.prototype,b,{configurable:!0,writable:!0,value:function(){return p(this)}});n=function(){}}function p(b){var c=0;return q(function(){return c<b.length?{done:!1,value:b[c++]}:{done:!0}})}function q(b){n();b={next:b};b[g.Symbol.iterator]=function(){return this};return b}function r(b){n();var c=b[Symbol.iterator];return c?c.call(b):p(b)}
+function t(b,c,d){this.i=b;this.c=b.c.querySelector("row:nth-child("+(c+1)+") > cell:nth-child("+(d+1)+")");this.c.addEventListener("click",this.j.bind(this),!1);this.f=0;this.g=!1;this.a=!0;this.b=0;this.h=null}function u(b){return!b.a&&null!==b.h&&b.f>b.h?!1:b.a&&b.g&&1<b.b?!1:!0}t.prototype.j=function(){if(this.a&&this.b&&this.g)this.g=!1;else if(this.a)this.g=!0;else return;v(this.i)};
+function v(b){for(var c=r(b.a),d=c.next();!d.done;d=c.next())for(var d=r(d.value),a=d.next();!a.done;a=d.next())a=a.value,a.f=0,a.b=0;for(c=0;c!==b.b;++c)for(d=0;d!==b.b;++d)if(a=b.a[c][d],a.g){++a.b;for(a=d-1;0<=a;--a){var e=b.a[c][a];++e.b;a===d-1&&++e.f;if(!e.a)break}for(a=d+1;a<b.b&&(e=b.a[c][a],++e.b,a===d+1&&++e.f,e.a);++a);for(a=c-1;0<=a&&(e=b.a[a][d],++e.b,a===c-1&&++e.f,e.a);--a);for(a=c+1;a<b.b&&(e=b.a[a][d],++e.b,a===c+1&&++e.f,e.a);++a);}c=r(b.a);for(d=c.next();!d.done;d=c.next())for(d=
+r(d.value),a=d.next();!a.done;a=d.next())a=a.value,a.c.classList.remove("alight","black","unhappy"),a.c.textContent="",a.a?a.a&&a.b&&(a.c.classList.add("alight"),a.g&&(a.c.textContent="\ud83d\udca1")):(a.c.classList.add("black"),null!==a.h&&(a.c.textContent=a.h.toString())),u(a)||a.c.classList.add("unhappy");c=document.body;c.classList.remove("solved","unhappy");a:{d=r(b.a);for(a=d.next();!a.done;a=d.next())for(a=r(a.value),e=a.next();!e.done;e=a.next())if(!u(e.value)){d=!1;break a}d=!0}if(d){a:{d=
+r(b.a);for(a=d.next();!a.done;a=d.next())for(a=r(a.value),e=a.next();!e.done;e=a.next())if(e=e.value,!u(e)||!e.a&&null!==e.h&&e.f!==e.h||e.a&&!e.b){d=!1;break a}d=!0}d?(b.f.textContent="The board is solved!",c.classList.add("solved")):b.f.textContent="The board is happy but not solved."}else b.f.textContent="The board is unhappy.",c.classList.add("unhappy")}
+var w=new function(){this.c=document.querySelector("#light-up-container light-up");this.f=document.querySelector("#light-up-container .board-state");this.a=[];this.b=0};function x(b){if(!b.length)return"Board cannot be empty.";for(var c=0;c!==b.length;++c){b[c]=b[c].trim();if(b[c].length!==b.length)return"Line "+(c+1)+" has "+b[c].length+" character(s) instead of "+b.length+".";if(!/^[.LX0-9]+$/.test(b[c]))return"Line "+(c+1)+" ("+b[c]+") contains invalid characters."}return null}
+function y(){var b=document.querySelector("#light-up-container form textarea").value.trim().split("\n"),c=x(b);if(c)alert("Invalid board: "+c);else{w.b=b.length;w.c.innerHTML="";for(c=0;c!==w.b;++c){for(var d=document.createElement("row"),a=0;a!==w.b;++a)d.appendChild(document.createElement("cell"));w.c.appendChild(d)}w.a.splice(0,w.a.length);for(c=0;c!==w.b;++c){d=[];for(a=0;a!==w.b;++a){var e=new t(w,c,a),k=b[c][a];e.f=0;e.g=!1;e.a=!1;e.b=0;e.h=null;"."===k?e.a=!0:"L"===k?(e.a=!0,e.g=!0):"X"===
+k?e.a=!1:(e.a=!1,e.h=parseInt(k,10));d.push(e)}w.a.push(d)}v(w)}}function z(b){b.preventDefault();setTimeout(y,0);return!1}document.addEventListener("DOMContentLoaded",function(){document.querySelector("#light-up-container form").addEventListener("submit",z,!1);y()});}).call(this);
+    </script>
+  </body>
+</html>
